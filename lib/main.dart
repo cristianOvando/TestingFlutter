@@ -82,7 +82,6 @@ class Home extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sample contacts
     final List<Map<String, String>> _contacts = [
       {'name': 'Martín de Jesús Ochoa Espinosa', 'phone': '9651193170'},
       {'name': 'Cristian Ovando Gómez', 'phone': '9651257602'},
