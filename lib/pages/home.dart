@@ -1,23 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});
+
+  Future<void> makePhoneCall(String phoneNumber) async {
+    final PermissionStatus status = await Permission.phone.request();
+
+    if (status.isGranted) {
+      final Uri phoneNumberUrl = Uri(
+        scheme: 'tel',
+        path: phoneNumber,
+      );
+      if (await canLaunchUrl(phoneNumberUrl)) {
+        await launchUrl(phoneNumberUrl);
+      } else {
+        print('No se pudo lanzar la llamada a $phoneNumberUrl');
+        throw 'No se pudo realizar la llamada';
+      }
+    } else {
+      print('Permiso de llamada no concedido');
+      throw 'Permiso de llamada no concedido';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final Map<String, Map<String, String>> teamMembers = {
       'Integrante 1': {
         'name': 'Martin de Jesús Ochoa Espinosa',
-        'phone': '9651193170',
+        'phone': '+529651193170',
       },
       'Integrante 2': {
         'name': 'Cristian Ovando Gómez',
-        'phone': '9651257602'
+        'phone': '+529651257602'
       },
       'Integrante 3': {
         'name': 'Diego Antonio Ortiz Cruz',
-        'phone': '9181071656'
+        'phone': '+529181071656'
       },
     };
 
@@ -43,11 +64,10 @@ class Home extends StatelessWidget {
                 color: Colors.white,
                 icon: const Icon(Icons.phone),
                 onPressed: () async {
-                  final phoneNumber = Uri.parse('tel:${entry.value['phone']}');
-                  if (await canLaunchUrl(phoneNumber)) {
-                    await launchUrl(phoneNumber);
-                  } else {
-                    throw 'No se pudo realizar la llamada';
+                  try {
+                    await makePhoneCall(entry.value['phone']!);
+                  } catch (e) {
+                    print(e);
                   }
                 },
               ),
@@ -67,9 +87,10 @@ class Home extends StatelessWidget {
                 icon: const Icon(Icons.message),
                 onPressed: () async {
                   final messageNumber = Uri.parse('sms:${entry.value['phone']}');
-                  if (await launchUrl(messageNumber)) {
+                  if (await canLaunchUrl(messageNumber)) {
                     await launchUrl(messageNumber);
                   } else {
+                    print('No se pudo enviar el mensaje');
                     throw 'No se pudo enviar el mensaje';
                   }
                 },
@@ -93,6 +114,7 @@ class Home extends StatelessWidget {
                   if (await canLaunchUrl(url)) {
                     await launchUrl(url);
                   } else {
+                    print('No se pudo abrir el perfil de GitHub');
                     throw 'No se pudo abrir el perfil de GitHub';
                   }
                 },
