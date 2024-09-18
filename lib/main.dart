@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/home.dart';  
-import 'pages/contact_screen.dart';  
+import 'pages/input_and_text.dart';  
 import 'pages/student_form.dart';
 import 'pages/student_list.dart';
 
@@ -36,7 +36,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const Home(),           
-    const ContactsScreen(),  
+    const InputAndText(),  
     StudentForm(),
   ];
 
@@ -49,7 +49,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex], 
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(

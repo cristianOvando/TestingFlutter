@@ -130,6 +130,12 @@ class Home extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            Image.asset(
+              'assets/images/mi_foto.jpg', // Aquí va tu imagen
+              width: 100, // Ajusta el tamaño según sea necesario
+              height: 100,
+            ),
+            const SizedBox(height: 20), // Espacio entre la imagen y el texto
             const Text(
               'Mi proyecto',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
