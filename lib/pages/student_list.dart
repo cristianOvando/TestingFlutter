@@ -20,7 +20,7 @@ class _StudentListState extends State<StudentList> {
 
   // Función para obtener la lista de alumnos desde la API
   Future<void> _fetchStudents() async {
-    final url = Uri.parse('http://192.168.56.1:3000/api/students'); // URL de la API
+    final url = Uri.parse('http://10.0.2.2:5001/api/students'); // URL de la API
 
     try {
       final response = await http.get(url);

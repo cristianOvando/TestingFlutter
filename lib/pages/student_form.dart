@@ -18,7 +18,7 @@ class _StudentFormState extends State<StudentForm> {
       _formKey.currentState!.save();
 
       // URL de la API (actualiza el puerto si es necesario)
-      final url = Uri.parse('http://192.168.56.1:3000/api/student');
+      final url = Uri.parse('http://10.0.2.2:5001/api/student');
 
       // Datos a enviar
       final body = json.encode({
