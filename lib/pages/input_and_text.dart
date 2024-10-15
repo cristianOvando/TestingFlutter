@@ -21,24 +21,22 @@ class _InputAndTextState extends State<InputAndText> {
     
   }
 
-  //Verifica si Face ID o huella dactilar estan disponibles
   Future<void> _checkBiometrics() async {
     List<BiometricType> availableBiometrics = await auth.getAvailableBiometrics();
     if (availableBiometrics.contains(BiometricType.face)){
       setState((){
-        _isFaceIDAvailable = true; //Face ID esta disponible
+        _isFaceIDAvailable = true; 
       });
     }
   }
 
-  //Metodo para autenticar con Face ID o huella dactilar
   Future<void> _authenticate() async {
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
         localizedReason: _isFaceIDAvailable
         ? 'Por favor ingresa con tu Face ID para enviar el texto'
-        : 'Por favor ingresa con tu huella para enviar el texto', //Cambia el mensaje segun el tipo de autenticacion
+        : 'Por favor ingresa con tu huella para enviar el texto', 
         options: const AuthenticationOptions(
           biometricOnly: true,
         ),
@@ -52,8 +50,6 @@ class _InputAndTextState extends State<InputAndText> {
       _updateText();
     }
   }
-  
- 
 
   void _updateText() {
     setState(() {

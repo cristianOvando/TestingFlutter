@@ -8,19 +8,18 @@ class StudentList extends StatefulWidget {
 }
 
 class _StudentListState extends State<StudentList> {
-  List<Map<String, dynamic>> students = []; // Cambiar a dynamic
-  bool isLoading = true; // Estado de carga
+  List<Map<String, dynamic>> students = []; 
+  bool isLoading = true; 
   String errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _fetchStudents(); // Llamada inicial para obtener los datos de la API
+    _fetchStudents();
   }
 
-  // Función para obtener la lista de alumnos desde la API
   Future<void> _fetchStudents() async {
-    final url = Uri.parse('http://10.0.2.2:5001/api/students'); // URL de la API
+    final url = Uri.parse('http://10.0.2.2:5001/api/students'); 
 
     try {
       final response = await http.get(url);
@@ -28,10 +27,8 @@ class _StudentListState extends State<StudentList> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
 
-        // Simulamos una demora artificial de 2 segundos antes de mostrar los datos
         await Future.delayed(Duration(seconds: 2));
 
-        // Verificar que la respuesta no esté vacía
         if (data.isNotEmpty) {
           setState(() {
             students = data.map((student) {
@@ -57,7 +54,7 @@ class _StudentListState extends State<StudentList> {
       });
     } finally {
       setState(() {
-        isLoading = false; // Terminamos la carga después de la demora
+        isLoading = false; 
       });
     }
   }
@@ -69,11 +66,11 @@ class _StudentListState extends State<StudentList> {
         title: Text('Lista de Alumnos Registrados UP'),
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator()) // Indicador de carga
+          ? Center(child: CircularProgressIndicator()) 
           : errorMessage.isNotEmpty
-          ? Center(child: Text(errorMessage)) // Mensaje de error
+          ? Center(child: Text(errorMessage)) 
           : students.isEmpty
-          ? Center(child: Text('Lista Vacia, Agregue Alumnos')) // Lista vacía
+          ? Center(child: Text('Lista Vacia, Agregue Alumnos')) 
           : ListView.builder(
         itemCount: students.length,
         itemBuilder: (context, index) {
@@ -85,7 +82,7 @@ class _StudentListState extends State<StudentList> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(context, '/student_form'); // Navegar al formulario de registro
+          Navigator.pushNamed(context, '/student_form');
         },
         child: Icon(Icons.arrow_back),
         tooltip: 'Regresar al formulario',

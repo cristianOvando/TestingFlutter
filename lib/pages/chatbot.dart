@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'dart:async'; 
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,24 +29,24 @@ class ChatbotPage extends StatefulWidget {
 }
 
 class _ChatbotPageState extends State<ChatbotPage> {
-  final String apiKey = 'AIzaSyAZDCLmFFY3UkTaDSwc9GeHqUt4HaO8sNU'; 
   final String apiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAZDCLmFFY3UkTaDSwc9GeHqUt4HaO8sNU'; 
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAZDCLmFFY3UkTaDSwc9GeHqUt4HaO8sNU';
 
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  final List<Map<String, String>> _history = []; 
-  bool _isConnected = true;
-
- 
+  final FocusNode _focusNode = FocusNode();
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+
+  bool _isConnected = true;
+  bool _isThinking = false;
 
   @override
   void initState() {
     super.initState();
-    _checkConnection(); 
+    _checkConnection();
+    _loadHistory();
     _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+        Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
         _isConnected = result != ConnectivityResult.none;
       });
@@ -54,72 +55,149 @@ class _ChatbotPageState extends State<ChatbotPage> {
 
   @override
   void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
     _connectivitySubscription.cancel();
     super.dispose();
   }
 
- 
   Future<void> _checkConnection() async {
-    final ConnectivityResult result = await Connectivity().checkConnectivity();
+    final result = await Connectivity().checkConnectivity();
     setState(() {
       _isConnected = result != ConnectivityResult.none;
     });
   }
 
+  Future<void> _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedData = json.encode(_messages);
+    await prefs.setString('chat_history', encodedData);
+  }
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? encodedData = prefs.getString('chat_history');
+    if (encodedData != null) {
+      final List<dynamic> decodedData = json.decode(encodedData);
+      setState(() {
+        _messages.addAll(decodedData.map((e) => Map<String, String>.from(e)));
+      });
+    }
+  }
+
+  Future<void> _clearChat() async {
+    setState(() {
+      _messages.clear();
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('chat_history');
+  }
+
+  bool _isMessageValid(String message) {
+    final cleanedMessage = message.trim();
+    return cleanedMessage.isNotEmpty;
+  }
+
+  String _buildConversationContext() {
+    return _messages
+        .map((msg) => '${msg["sender"]}: ${msg["message"]}')
+        .join('\n');
+  }
+
   Future<void> sendMessage(String message) async {
     setState(() {
       _messages.add({"sender": "user", "message": message});
-      _history.add({"sender": "user", "message": message}); 
+      _isThinking = true;
+      _controller.clear();
+      _focusNode.unfocus();
     });
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: json.encode({
-        "contents": [
-          {
-            "parts": [
-              {"text": message} 
+    Future.microtask(() async {
+      try {
+        final conversationContext = _buildConversationContext();
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            "contents": [
+              {
+                "parts": [
+                  {"text": "$conversationContext\nUser: $message"}
+                ]
+              }
             ]
-          }
-        ]
-      }),
-    );
+          }),
+        );
 
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}'); 
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final botMessage =
+              data["candidates"]?[0]?["content"]?["parts"]?[0]?["text"] ??
+                  'No response';
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final botMessage = data["candidates"]?[0]["content"]?["parts"]?[0]["text"] ?? 'No response';
-      setState(() {
-        _messages.add({"sender": "bot", "message": botMessage}); 
-        _history.add({"sender": "bot", "message": botMessage}); 
-      });
-    } else {
-      setState(() {
-        _messages.add({
-          "sender": "bot",
-          "message": "Error: ${response.statusCode}"
-        }); 
-      });
-    }
-
-    _controller.clear(); 
+          setState(() {
+            _messages.add({"sender": "bot", "message": botMessage});
+          });
+        } else {
+          setState(() {
+            _messages.add({
+              "sender": "bot",
+              "message": "Error: ${response.statusCode} - ${response.body}"
+            });
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _messages.add({"sender": "bot", "message": "Error: $e"});
+        });
+      } finally {
+        setState(() {
+          _isThinking = false;
+        });
+        await _saveHistory();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Icon(
+          Icons.smart_toy,
+          size: 28.0,
+          color: Color.fromARGB(255, 32, 39, 130),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: _clearChat,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(10.0),
-              itemCount: _messages.length,
+              itemCount: _messages.length + (_isThinking ? 1 : 0),
               itemBuilder: (context, index) {
+                if (_isThinking && index == _messages.length) {
+                  return const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Text(
+                        'Escribiendo...',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'Roboto',
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
                 final message = _messages[index];
                 final isUserMessage = message['sender'] == 'user';
 
@@ -132,14 +210,16 @@ class _ChatbotPageState extends State<ChatbotPage> {
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
                       color: isUserMessage
-                          ? Colors.blueAccent
-                          : Colors.grey[300],
+                          ? Colors.green
+                          : const Color.fromRGBO(28, 39, 37, 1),
                       borderRadius: BorderRadius.circular(15.0),
                     ),
                     child: Text(
                       message['message']!,
                       style: TextStyle(
-                        color: isUserMessage ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontFamily: 'Roboto',
+                        color: isUserMessage ? Colors.white : Colors.white70,
                       ),
                     ),
                   ),
@@ -148,13 +228,13 @@ class _ChatbotPageState extends State<ChatbotPage> {
             ),
           ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    focusNode: _focusNode,
                     decoration: const InputDecoration(
                       hintText: 'Escribe un mensaje...',
                       border: OutlineInputBorder(),
@@ -164,14 +244,16 @@ class _ChatbotPageState extends State<ChatbotPage> {
                 const SizedBox(width: 8.0),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  color: _isConnected ? Colors.blueAccent : Colors.grey,
+                  color: _isConnected ? Color.fromARGB(255, 99, 153, 223) : Colors.grey,
                   onPressed: _isConnected
                       ? () {
-                          if (_controller.text.isNotEmpty) {
-                            sendMessage(_controller.text);
+                          final text = _controller.text;
+                          if (_isMessageValid(text)) {
+                            _focusNode.unfocus();
+                            sendMessage(text.trim());
                           }
                         }
-                      : null, 
+                      : null,
                 ),
               ],
             ),
@@ -181,5 +263,3 @@ class _ChatbotPageState extends State<ChatbotPage> {
     );
   }
 }
-
-
